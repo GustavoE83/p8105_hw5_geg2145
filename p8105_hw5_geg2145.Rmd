@@ -17,12 +17,16 @@ The Washington Post has gathered data on homicides in 50 large U.S. cities and m
 
 ```{r p1_data}
 df_homicide = read_csv("./data/homicide_data.csv")
+
+head(df_homicide, 3)
 ```
+
+**This dataset has `r nrow(df_homicide)` rows and `r ncol(df_homicide)` columns. Each row is a homicide for which we have the `city` and state in which it occured, and the `disposition` (status) of the investigation.**
 
 
 Describe the raw data. Create a city_state variable (e.g. “Baltimore, MD”) and then summarize within cities to obtain the total number of homicides and the number of unsolved homicides (those for which the disposition is “Closed without arrest” or “Open/No arrest”).
 
-```{r}
+```{r p1_hom_city_state}
 df_homicide = df_homicide %>%
   mutate(city_state = str_c(city, ", ", state)) 
 
@@ -39,7 +43,7 @@ head(df_hom_cities, 6)
 
 For the city of Baltimore, MD, use the prop.test function to estimate the proportion of homicides that are unsolved; save the output of prop.test as an R object, apply the broom::tidy to this object and pull the estimated proportion and confidence intervals from the resulting tidy dataframe.
 
-```{r}
+```{r p1_baltimore}
 baltimore = df_hom_cities %>%
   filter(city_state == "Baltimore, MD")
   
@@ -51,10 +55,12 @@ result %>%
   select(estimate, conf.low, conf.high)
 ```
 
+**Baltimore sees an estimated 65% of its homicides go unsolved.**
+
 
 Now run prop.test for each of the cities in your dataset, and extract both the proportion of unsolved homicides and the confidence interval for each. Do this within a “tidy” pipeline, making use of purrr::map, purrr::map2, list columns and unnest as necessary to create a tidy dataframe with estimated proportions and CIs for each city.
 
-```{r}
+```{r p1_prop_tests}
 prop_tests = df_hom_cities %>%
   mutate(test = map2(unsolved_cases, cases,  prop.test),
          result = map(test, broom::tidy)) %>%
@@ -64,14 +70,18 @@ prop_tests = df_hom_cities %>%
 
 Create a plot that shows the estimates and CIs for each city – check out geom_errorbar for a way to add error bars based on the upper and lower limits. Organize cities according to the proportion of unsolved homicides.
 
-```{r}
+```{r p1_plot}
 prop_tests %>%
   mutate(city_state = fct_reorder(city_state, estimate)) %>%
   ggplot(aes(x = neighborhood, y = estimate)) + 
   geom_point(aes(x = city_state, y = estimate))  + 
   geom_errorbar(aes(x= city_state, ymin = conf.low, ymax = conf.high), 
                 color="red") + 
-  theme(axis.text.x = element_text(angle = 80, hjust = 1))
+  theme(axis.text.x = element_text(angle = 80, hjust = 1)) +
+  labs(title = "Estimated proportion of homicides that go unsolved",
+       subtitle ="With 95% confidence interval",
+       x = "City", 
+       y = "Estimated proportion")
 ```
 
 
@@ -117,28 +127,29 @@ When designing an experiment or analysis, a common question is whether it is lik
 
 First set the following design elements:
 
-    Fix n=30
+Fix n=30
 
-Fix σ=5
+Fix $\sigma$=5
 
-Set μ=0
+Set $\mu$=0
 
-. Generate 5000 datasets from the model
+Generate 5000 datasets from the model
 
-x∼Normal[μ,σ]
+X ~ Normal($\mu, \sigma$)
 
-For each dataset, save μ^
-and the p-value arising from a test of H:μ=0 using α=0.05
+For each dataset, save $\hat{\mu}$
 
-. Hint: to obtain the estimate and p-value, use broom::tidy to clean the output of t.test.
+and the p-value arising from a test of H: $\mu = 0$ using $\alpha = 0.05$
 
-Repeat the above for μ={1,2,3,4,5,6}
+Hint: to obtain the estimate and p-value, use broom::tidy to clean the output of t.test.
 
-, and complete the following:
+Repeat the above for $\mu$={1,2,3,4,5,6}
 
-    Make a plot showing the proportion of times the null was rejected (the power of the test) on the y axis and the true value of μ
+and complete the following:
+
+Make a plot showing the proportion of times the null was rejected (the power of the test) on the y axis and the true value of $\mu$
 
 on the x axis. Describe the association between effect size and power.
-Make a plot showing the average estimate of μ^
-on the y axis and the true value of μ on the x axis. Make a second plot (or overlay on the first) the average estimate of μ^ only in samples for which the null was rejected on the y axis and the true value of μ on the x axis. Is the sample average of μ^ across tests for which the null is rejected approximately equal to the true value of μ? Why or why not?
+Make a plot showing the average estimate of $\hat{\mu}$
+on the y axis and the true value of $\mu$ on the x axis. Make a second plot (or overlay on the first) the average estimate of $\hat{\mu}$ only in samples for which the null was rejected on the y axis and the true value of $\mu$ on the x axis. Is the sample average of $\hat{\mu}$ across tests for which the null is rejected approximately equal to the true value of $\mu$? Why or why not?
 

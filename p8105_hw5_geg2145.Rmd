@@ -141,15 +141,91 @@ For each dataset, save $\hat{\mu}$
 
 and the p-value arising from a test of H: $\mu = 0$ using $\alpha = 0.05$
 
+```{r p3_mean_0}
+sim_t_test= function(mean , n = 30, sd = 5) {
+  
+  sim_data = x = rnorm(n, mean = mean, sd = sd)
+  
+  result = t.test(sim_data) %>%
+           broom::tidy() %>%
+  select(estimate, p.value)
+  
+  return(result)
+}
+
+sim_results_df = 
+  expand_grid(
+    mean = c(0),
+    iter = 1:5000
+  ) %>%
+  mutate(
+    result = map(mean, sim_t_test)) %>%
+  unnest(cols = result)
+```
+
+
 Hint: to obtain the estimate and p-value, use broom::tidy to clean the output of t.test.
 
 Repeat the above for $\mu$={1,2,3,4,5,6}
 
+```{r p3_all_means}
+sim_results_df = 
+  expand_grid(
+    mean = c(0,1,2,3,4,5,6),
+    iter = 1:5000
+  ) %>%
+  mutate(
+    result = map(mean, sim_t_test)) %>%
+  unnest(cols = result)
+```
+
 and complete the following:
 
-Make a plot showing the proportion of times the null was rejected (the power of the test) on the y axis and the true value of $\mu$
+Make a plot showing the proportion of times the null was rejected (the power of the test) on the y axis and the true value of $\mu$ on the x axis. Describe the association between effect size and power.
 
-on the x axis. Describe the association between effect size and power.
-Make a plot showing the average estimate of $\hat{\mu}$
-on the y axis and the true value of $\mu$ on the x axis. Make a second plot (or overlay on the first) the average estimate of $\hat{\mu}$ only in samples for which the null was rejected on the y axis and the true value of $\mu$ on the x axis. Is the sample average of $\hat{\mu}$ across tests for which the null is rejected approximately equal to the true value of $\mu$? Why or why not?
+```{r p3_proportion_rejected}
+sim_results_df %>%
+  mutate(
+    rejected = case_when(
+      p.value < 0.05 ~ "reject",
+      T ~ "fail to reject"),
+    mean = as.factor(mean)
+  ) %>%
+  ggplot() + geom_bar(aes(x = mean, fill = rejected)) + 
+  labs(Title = "The Null Hypothesis is correctly rejected for higher effect sizes",
+       x = "Effect size (real mean)",
+       y = "Count",
+       fill = "Test result")
+```
+
+**As the effect size increases, the power increases. That means that greater effect sizes are easier to detect than lower effect sizes.**
+
+Make a plot showing the average estimate of $\hat{\mu}$ on the y axis and the true value of $\mu$ on the x axis. Make a second plot (or overlay on the first) the average estimate of $\hat{\mu}$ only in samples for which the null was rejected on the y axis and the true value of $\mu$ on the x axis. Is the sample average of $\hat{\mu}$ across tests for which the null is rejected approximately equal to the true value of $\mu$? Why or why not?
+
+```{r p3_average}
+sim_results_df %>%
+  group_by(mean) %>%
+  summarize(mean_estimate = mean(estimate)) %>%
+  ggplot() + geom_point(aes(x= mean, y = mean_estimate)) + 
+  labs(title = "The average estimated mean is almost exactly the real mean",
+       x = "Effect size (real mean)",
+       y = "Average estimated mean")
+```
+
+```{r p3_reject_vs_fail_reject}
+sim_results_df %>%
+  mutate(
+    rejected = case_when(
+      p.value < 0.05 ~ "reject",
+      T ~ "fail to reject")) %>%
+  group_by(mean, rejected) %>%
+  summarize(mean_estimate = mean(estimate)) %>%
+  ggplot() + geom_point(aes(x= mean, y = mean_estimate, color = rejected)) + 
+  labs(title = "The average estimated mean when we reject is greater than when we fail to reject",
+       x = "Effect size (real mean)",
+       y = "Average estimated mean", 
+       fill = "Test result")
+```
+
+**In these plots, we see how the average effect size across all 5,000 iterations is almost exactly the real effect size (which is due to higher sample sizes estimating true effect sizes better). For tests that failed to reject when the real mean was not equal to 0, we see that the estimated effect size was lower than when the test correctly rejected the Null Hypothesis. Due to random chance, those samples ended with estimates that were lower than the real mean. Hence, they are closer to 0 and it is harder for the t-test to reject the Null Hypothesis.**
 
